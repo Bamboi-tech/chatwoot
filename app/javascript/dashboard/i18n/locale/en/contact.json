@@ -508,7 +508,8 @@
         "ATTRIBUTES": "Attributes",
         "HISTORY": "History",
         "NOTES": "Notes",
-        "MERGE": "Merge"
+        "MERGE": "Merge",
+        "SHOPIFY_ORDERS": "Shopify Orders"
       },
       "HISTORY": {
         "EMPTY_STATE": "There are no previous conversations associated to this contact"

@@ -1,8 +1,12 @@
 <script setup>
-import { onMounted, computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
-import { useStore, useMapGetter } from 'dashboard/composables/store';
+import {
+  useStore,
+  useMapGetter,
+  useFunctionGetter,
+} from 'dashboard/composables/store';
 import { useRoute, useRouter } from 'vue-router';
 
 import ContactsDetailsLayout from 'dashboard/components-next/Contacts/ContactsDetailsLayout.vue';
@@ -13,6 +17,7 @@ import ContactNotes from 'dashboard/components-next/Contacts/ContactsSidebar/Con
 import ContactHistory from 'dashboard/components-next/Contacts/ContactsSidebar/ContactHistory.vue';
 import ContactMerge from 'dashboard/components-next/Contacts/ContactsSidebar/ContactMerge.vue';
 import ContactCustomAttributes from 'dashboard/components-next/Contacts/ContactsSidebar/ContactCustomAttributes.vue';
+import ShopifyOrdersList from 'dashboard/components/widgets/conversation/ShopifyOrdersList.vue';
 
 const store = useStore();
 const route = useRoute();
@@ -20,6 +25,10 @@ const router = useRouter();
 
 const contact = useMapGetter('contacts/getContactById');
 const uiFlags = useMapGetter('contacts/getUIFlags');
+const shopifyIntegration = useFunctionGetter(
+  'integrations/getIntegration',
+  'shopify'
+);
 
 const activeTab = ref('attributes');
 const contactMergeRef = ref(null);
@@ -36,22 +45,36 @@ const showSpinner = computed(
 
 const { t } = useI18n();
 
-const CONTACT_TABS_OPTIONS = [
-  { key: 'ATTRIBUTES', value: 'attributes' },
-  { key: 'HISTORY', value: 'history' },
-  { key: 'NOTES', value: 'notes' },
-  { key: 'MERGE', value: 'merge' },
-];
+const isShopifyFeatureEnabled = computed(() => {
+  const integration = shopifyIntegration.value;
+  const hasHook = (integration.hooks?.length ?? 0) > 0;
+  return Boolean(integration.enabled || hasHook);
+});
+
+const contactTabsOptions = computed(() => {
+  const baseTabs = [
+    { key: 'ATTRIBUTES', value: 'attributes' },
+    { key: 'HISTORY', value: 'history' },
+    { key: 'NOTES', value: 'notes' },
+    { key: 'MERGE', value: 'merge' },
+  ];
+
+  if (isShopifyFeatureEnabled.value) {
+    baseTabs.splice(2, 0, { key: 'SHOPIFY_ORDERS', value: 'shopify_orders' });
+  }
+
+  return baseTabs;
+});
 
 const tabs = computed(() => {
-  return CONTACT_TABS_OPTIONS.map(tab => ({
+  return contactTabsOptions.value.map(tab => ({
     label: t(`CONTACTS_LAYOUT.SIDEBAR.TABS.${tab.key}`),
     value: tab.value,
   }));
 });
 
 const activeTabIndex = computed(() => {
-  return CONTACT_TABS_OPTIONS.findIndex(v => v.value === activeTab.value);
+  return contactTabsOptions.value.findIndex(v => v.value === activeTab.value);
 });
 
 const goToContactsList = () => {
@@ -118,6 +141,7 @@ const toggleContactBlock = async isBlocked => {
 };
 
 onMounted(() => {
+  store.dispatch('integrations/get');
   fetchActiveContact();
   fetchContactNotes();
   fetchContactConversations();
@@ -171,12 +195,16 @@ onMounted(() => {
           />
           <ContactNotes v-if="activeTab === 'notes'" />
           <ContactHistory v-if="activeTab === 'history'" />
+          <ShopifyOrdersList
+            v-if="activeTab === 'shopify_orders'"
+            :contact-id="route.params.contactId"
+          />
           <ContactMerge
             v-if="activeTab === 'merge'"
             ref="contactMergeRef"
             :selected-contact="selectedContact"
             @go-to-contacts-list="goToContactsList"
-            @reset-tab="handleTabChange(CONTACT_TABS_OPTIONS[0])"
+            @reset-tab="handleTabChange(contactTabsOptions[0])"
           />
         </template>
       </template>

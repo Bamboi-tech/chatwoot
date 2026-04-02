@@ -1,5 +1,6 @@
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, toRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useFunctionGetter } from 'dashboard/composables/store';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import ShopifyAPI from '../../../api/integrations/shopify';
@@ -12,7 +13,9 @@ const props = defineProps({
   },
 });
 
-const contact = useFunctionGetter('contacts/getContact', props.contactId);
+const { t } = useI18n();
+const contactIdRef = toRef(props, 'contactId');
+const contact = useFunctionGetter('contacts/getContact', contactIdRef);
 
 const hasSearchableInfo = computed(
   () => !!contact.value?.email || !!contact.value?.phone_number
@@ -25,18 +28,19 @@ const error = ref('');
 const fetchOrders = async () => {
   try {
     loading.value = true;
+    error.value = '';
     const response = await ShopifyAPI.getOrders(props.contactId);
     orders.value = response.data.orders;
   } catch (e) {
     error.value =
-      e.response?.data?.error || 'CONVERSATION_SIDEBAR.SHOPIFY.ERROR';
+      e.response?.data?.error || t('CONVERSATION_SIDEBAR.SHOPIFY.ERROR');
   } finally {
     loading.value = false;
   }
 };
 
 watch(
-  () => props.contactId,
+  contactIdRef,
   () => {
     if (hasSearchableInfo.value) {
       fetchOrders();

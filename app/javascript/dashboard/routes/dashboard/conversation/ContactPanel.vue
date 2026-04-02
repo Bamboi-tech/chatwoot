@@ -50,9 +50,13 @@ const shopifyIntegration = useFunctionGetter(
   'shopify'
 );
 
-const isShopifyFeatureEnabled = computed(
-  () => shopifyIntegration.value.enabled
-);
+// Match settings UI: connected when `enabled` is true or a Shopify hook exists.
+// The integrations list can load after first paint; `enabled` alone can be briefly stale.
+const isShopifyFeatureEnabled = computed(() => {
+  const integration = shopifyIntegration.value;
+  const hasHook = (integration.hooks?.length ?? 0) > 0;
+  return Boolean(integration.enabled || hasHook);
+});
 
 const { isCloudFeatureEnabled } = useAccount();
 
@@ -121,12 +125,15 @@ const closeContactPanel = () => {
   });
 };
 
+watch(conversationSidebarItemsOrder, newOrder => {
+  conversationSidebarItems.value = [...newOrder];
+});
+
 onMounted(() => {
-  conversationSidebarItems.value = conversationSidebarItemsOrder.value;
+  conversationSidebarItems.value = [...conversationSidebarItemsOrder.value];
   getContactDetails();
   store.dispatch('attributes/get', 0);
-  // Load integrations to ensure linear integration state is available
-  store.dispatch('integrations/get', 'linear');
+  store.dispatch('integrations/get');
 });
 </script>
 

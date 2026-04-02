@@ -23,8 +23,8 @@ class Shopify::CallbacksController < ApplicationController
   end
 
   def handle_response
-    account.hooks.create!(
-      app_id: 'shopify',
+    hook = account.hooks.find_or_initialize_by(app_id: 'shopify')
+    hook.update!(
       access_token: parsed_body['access_token'],
       status: 'enabled',
       reference_id: params[:shop],
@@ -54,10 +54,6 @@ class Shopify::CallbacksController < ApplicationController
 
   def account
     @account ||= Account.find(@account_id)
-  end
-
-  def account_id
-    @account_id ||= params[:state].split('_').first
   end
 
   def shopify_integration_url
